@@ -58,7 +58,7 @@ export class VotingService {
           )
       );
 
-    if (options.eventId) filteredList = filteredList.filter(x => x.event.eventId === options.eventId);
+    if (options.eventId) filteredList = filteredList.filter(x => x.event?.eventId === options.eventId);
     if (options.type) filteredList = filteredList.filter(x => x.type === options.type);
 
     switch (options.sortBy) {
