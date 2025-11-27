@@ -300,7 +300,7 @@ export class VotingBallot extends Resource {
   load(x: any): void {
     super.load(x);
     this.text = this.clean(x.text, String);
-    this.majorityType = this.clean(x.majorityType, String, VotingMajorityTypes.RELATIVE);
+    this.majorityType = this.clean(x.majorityType, String, VotingMajorityTypes.SIMPLE);
     this.options = this.cleanArray(x.options, String);
   }
 
@@ -317,9 +317,10 @@ export class VotingBallot extends Resource {
  * The type of majorities available for a ballot.
  */
 export enum VotingMajorityTypes {
-  RELATIVE = 'RELATIVE',
   SIMPLE = 'SIMPLE',
-  TWO_THIRDS = 'TWO_THIRDS'
+  RELATIVE = 'RELATIVE',
+  ABSOLUTE = 'ABSOLUTE',
+  QUALIFIED = 'QUALIFIED'
 }
 
 /**

@@ -43,7 +43,7 @@ import { VotingResults } from '@models/votingResult.model';
               <ion-col [size]="12" [sizeMd]="results ? 9 : 12">
                 <ion-item
                   lines="none"
-                  *ngFor="let option of getOptionsOfBallotIncludingAbstainAndAbsentByIndex(bIndex); let oIndex = index"
+                  *ngFor="let option of getOptionsOfBallotIncludingAbstainByIndex(bIndex); let oIndex = index"
                   [button]="results && !votingSession.isSecret()"
                   (click)="openBallotVotesDetailPopover(bIndex, oIndex, option, $event)"
                 >
@@ -180,14 +180,21 @@ export class BallotsStandaloneComponent implements OnChanges, OnDestroy {
     popover.present();
   }
 
-  getOptionsOfBallotIncludingAbstainAndAbsentByIndex(bIndex: number): string[] {
+  getOptionsOfBallotIncludingAbstainByIndex(bIndex: number): string[] {
     const options = this.votingSession.ballots[bIndex].options;
     if (!this.results) return [...options, this.t._('VOTING.ABSTAIN')];
     if (!this.raw) return options;
-    return [...options, this.t._('VOTING.ABSTAIN'), this.t._('VOTING.ABSENT')];
+    return [...options, this.t._('VOTING.ABSTAIN')];
   }
   getResultOfBallotOptionBasedOnRaw(bIndex: number, oIndex: number): number {
-    if (this.raw) return this.results[bIndex][oIndex].value;
+    if (this.raw) {
+      const fullResults = this.results[bIndex];
+      const labelsCount = this.getOptionsOfBallotIncludingAbstainByIndex(bIndex).length;
+      const includedValues = fullResults.slice(0, labelsCount).map((r: any) => r.value);
+      const sumIncluded = includedValues.reduce((s, v) => (s += v), 0);
+      return sumIncluded > 0 ? fullResults[oIndex].value / sumIncluded : 0;
+    }
+
     const oResults = Object.values(this.results[bIndex]);
     const oResultsNoAbstainAndAbsent = oResults.slice(0, oResults.length - 2);
     const totNoAbstainAndAbsent = oResultsNoAbstainAndAbsent.reduce((tot, acc): number => (tot += acc.value), 0);
@@ -211,11 +218,12 @@ export class BallotsStandaloneComponent implements OnChanges, OnDestroy {
     );
     if (moreWinningResultsWithSameValue) return -1;
 
-    if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.RELATIVE) return winnerOptionIndex;
     if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.SIMPLE)
       return this.getResultOfBallotOptionBasedOnRaw(bIndex, winnerOptionIndex) > 1 / 2 ? winnerOptionIndex : -1;
-    if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.TWO_THIRDS)
-      // @todo this majority should be fixed in the Statutes (it's not possible to calculate "+1" with weighted voting)
+    if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.ABSOLUTE)
+      return this.getResultOfBallotOptionBasedOnRaw(bIndex, winnerOptionIndex) > 1 / 2 ? winnerOptionIndex : -1;
+    if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.RELATIVE) return winnerOptionIndex;
+    if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.QUALIFIED)
       return this.getResultOfBallotOptionBasedOnRaw(bIndex, winnerOptionIndex) > 2 / 3 ? winnerOptionIndex : -1;
   }
 
@@ -226,8 +234,8 @@ export class BallotsStandaloneComponent implements OnChanges, OnDestroy {
   buildCharts(): void {
     if (!this.results) return;
     this.votingSession.ballots.forEach((_, bIndex): void => {
-      const labels = this.getOptionsOfBallotIncludingAbstainAndAbsentByIndex(bIndex);
-      const data = this.getOptionsOfBallotIncludingAbstainAndAbsentByIndex(bIndex).map((_, oIndex): any =>
+      const labels = this.getOptionsOfBallotIncludingAbstainByIndex(bIndex);
+      const data = this.getOptionsOfBallotIncludingAbstainByIndex(bIndex).map((_, oIndex): any =>
         this.getResultOfBallotOptionBasedOnRaw(bIndex, oIndex)
       );
 

@@ -337,7 +337,7 @@ export class ManageVotingSessionPage implements OnDestroy {
       blank: {},
       'yes-no': {
         text: this.t._('VOTING.DO_YOU_APPROVE_XYZ'),
-        majorityType: VotingMajorityTypes.RELATIVE,
+        majorityType: VotingMajorityTypes.SIMPLE,
         options: [this.t._('COMMON.YES'), this.t._('COMMON.NO')]
       },
       candidates: {
