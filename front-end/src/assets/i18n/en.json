@@ -812,6 +812,7 @@
     "SHOW_VOTING_TOKEN": "Show voting token",
     "RESEND_VOTING_LINK": "Resend voting link",
     "RAW_RESULTS": "Casted votes",
+    "HIDE_ABSTENTIONS": "Hide abstentions",
     "NO_OPTION_RECEIVED_ENOUGH_VOTES": "No option received enough votes",
     "CHOOSE_TYPE": "Choose a type",
     "ROLL_CALL": "Roll call",
