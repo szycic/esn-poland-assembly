@@ -53,7 +53,7 @@ import { VotingResults } from '@models/votingResult.model';
                   </ion-badge>
                   <ion-label class="ion-text-wrap">{{ option }}</ion-label>
                   <ion-badge *ngIf="results" slot="end" color="medium" class="resultPercentage">
-                    {{ getResultOfBallotOptionBasedOnRaw(bIndex, oIndex) | percent : '1.2-2' }}
+                    {{ getResultOfBallotOptionBasedOnRaw(bIndex, oIndex) | percent : '1.2-2' }}&nbsp;({{ getResultCount(bIndex, oIndex) }})
                   </ion-badge>
                 </ion-item>
               </ion-col>
@@ -62,7 +62,8 @@ import { VotingResults } from '@models/votingResult.model';
                   <canvas [id]="chartCanvasBaseId + bIndex"></canvas>
                 </div>
               </ion-col>
-              <ion-col [size]="12" *ngIf="results && !raw">
+              <!--<ion-col [size]="12" *ngIf="results && !raw">-->
+              <ion-col [size]="12" *ngIf="results">
                 <ion-item lines="none" class="outcomeItem">
                   <ion-badge slot="end" color="light" *ngIf="getWinningBallotOptionIndex(bIndex) !== -1">
                     {{ votingSession.ballots[bIndex].options[getWinningBallotOptionIndex(bIndex)] }}
@@ -108,7 +109,7 @@ import { VotingResults } from '@models/votingResult.model';
         font-size: 0.9em;
       }
       ion-item ion-badge.resultPercentage {
-        width: 60px;
+        width: 90px;
         text-align: right;
       }
       div.chartContainer {
@@ -186,6 +187,7 @@ export class BallotsStandaloneComponent implements OnChanges, OnDestroy {
     if (!this.raw) return options;
     return [...options, this.t._('VOTING.ABSTAIN')];
   }
+
   getResultOfBallotOptionBasedOnRaw(bIndex: number, oIndex: number): number {
     if (this.raw) {
       const fullResults = this.results[bIndex];
@@ -200,6 +202,7 @@ export class BallotsStandaloneComponent implements OnChanges, OnDestroy {
     const totNoAbstainAndAbsent = oResultsNoAbstainAndAbsent.reduce((tot, acc): number => (tot += acc.value), 0);
     return totNoAbstainAndAbsent > 0 ? this.results[bIndex][oIndex].value / totNoAbstainAndAbsent : 0;
   }
+
   getWinningBallotOptionIndex(bIndex: number): number | -1 {
     const oResults = Object.values(this.results[bIndex]);
     const oResultsNoAbstainAndAbsent = oResults.slice(0, oResults.length - 2);
@@ -235,9 +238,9 @@ export class BallotsStandaloneComponent implements OnChanges, OnDestroy {
     if (!this.results) return;
     this.votingSession.ballots.forEach((_, bIndex): void => {
       const labels = this.getOptionsOfBallotIncludingAbstainByIndex(bIndex);
-      const data = this.getOptionsOfBallotIncludingAbstainByIndex(bIndex).map((_, oIndex): any =>
-        this.getResultOfBallotOptionBasedOnRaw(bIndex, oIndex)
-      );
+      const data = labels.map((_, oIndex): any => this.getResultOfBallotOptionBasedOnRaw(bIndex, oIndex));
+      // compute visible counts (if available/derivable) per label for tooltip display
+      const counts = labels.map((_, oIndex): number | null => this.getResultCount(bIndex, oIndex));
 
       const chartCanvas = document.getElementById(this.chartCanvasBaseId + bIndex) as HTMLCanvasElement;
       this.charts[bIndex] = new Chart(chartCanvas, {
@@ -248,7 +251,14 @@ export class BallotsStandaloneComponent implements OnChanges, OnDestroy {
           plugins: {
             legend: { display: false },
             tooltip: {
-              callbacks: { label: tooltipItem => `${(Number(tooltipItem.parsed) * 100).toFixed(2)}%` }
+              callbacks: {
+                label: tooltipItem => {
+                  const pct = `${(Number(tooltipItem.parsed) * 100).toFixed(2)}%`;
+                  const idx = Number(tooltipItem.dataIndex);
+                  const cnt = counts[idx];
+                  return cnt !== null && cnt !== undefined ? `${pct} (${cnt})` : pct;
+                }
+              }
             }
           }
         }
@@ -274,6 +284,54 @@ export class BallotsStandaloneComponent implements OnChanges, OnDestroy {
       event
     });
     popover.present();
+  }
+
+  /**
+   * Return an integer count for the given ballot option if available or
+   * derivable. Returns null if no reasonable approximation is available.
+   *
+   * Priority:
+   * - If the stored result object contains a voters[] array, use its length.
+   * - Else, if participantVoters is available (or can be approximated from the
+   *   Absent slot), derive a count from the option's proportion.
+   */
+  getResultCount(bIndex: number, oIndex: number): number | null {
+    if (!this.results) return null;
+    const slot = this.results[bIndex][oIndex];
+    if (slot?.voters && Array.isArray(slot.voters)) return slot.voters.length;
+
+    const totalVoters = this.votingSession?.voters?.length ?? null;
+
+    // Prefer accurate participant list if available
+    let participantsCount: number | null = this.votingSession?.participantVoters?.length ?? null;
+
+    // If participant list is not available, attempt approximation using the 'Absent' slot
+    if (participantsCount === null && totalVoters !== null) {
+      const fullResults = this.results[bIndex];
+      // labels count matches options + Abstain (we don't include Absent in labels)
+      const labelsCount = this.getOptionsOfBallotIncludingAbstainByIndex(bIndex).length;
+      const absentValue = fullResults[labelsCount] ? fullResults[labelsCount].value : 0;
+      participantsCount = Math.round((1 - (absentValue ?? 0)) * totalVoters);
+    }
+
+    if (participantsCount === null) return null;
+
+    // For raw mode, stored values are proportions over total (including Absent),
+    // so we need to exclude the Absent slot (sum only options+Abstain) when
+    // projecting counts.
+    if (this.raw) {
+      const fullResults = this.results[bIndex];
+      const labelsCount = this.getOptionsOfBallotIncludingAbstainByIndex(bIndex).length;
+      const includedSum = fullResults.slice(0, labelsCount).reduce((s, r) => (s += r.value), 0);
+      const valueIncluded = fullResults[oIndex].value;
+      const proportionAmongParticipants = includedSum > 0 ? valueIncluded / includedSum : 0;
+      return Math.round(proportionAmongParticipants * participantsCount);
+    }
+
+    // Non-raw: getResultOfBallotOptionBasedOnRaw already returns the fraction
+    // normalized as per non-raw rules (excludes Abstain and Absent). Use it.
+    const pct = this.getResultOfBallotOptionBasedOnRaw(bIndex, oIndex);
+    return Math.round(pct * participantsCount);
   }
 }
 
