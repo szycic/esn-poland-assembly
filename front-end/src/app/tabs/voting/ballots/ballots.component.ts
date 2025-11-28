@@ -282,6 +282,7 @@ export class BallotsStandaloneComponent implements OnChanges, OnDestroy {
     const componentProps = {
       ballotOption: option,
       resultValue: this.getResultOfBallotOptionBasedOnRaw(ballotIndex, optionIndex),
+      votersCount: this.getResultCount(ballotIndex, optionIndex),
       votersNames: this.results[ballotIndex][optionIndex].voters
     };
     const popover = await this.popoverCtrl.create({

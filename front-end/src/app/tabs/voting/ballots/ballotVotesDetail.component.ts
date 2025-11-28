@@ -15,7 +15,7 @@ import { IDEATranslationsModule } from '@idea-ionic/common';
             <p>{{ 'VOTING.VOTERS_FOR' | translate }}</p>
             <h3>{{ ballotOption }}</h3>
             <p>
-              <ion-badge color="medium">{{ resultValue }}</ion-badge>
+              <ion-badge color="medium">{{ resultValue }}&nbsp;({{ votersCount }})</ion-badge>
             </p>
           </ion-label>
         </ion-list-header>
@@ -57,6 +57,10 @@ export class BallotVotesDetailStandaloneComponent implements OnInit {
    * The result (numeric value) of the ballot option.
    */
   @Input() resultValue = 0;
+  /**
+   * The count of voters for this ballot option.
+   */
+  @Input() votersCount = 0;
   /**
    * If applicable, the list of voters' names for this ballot option.
    */
