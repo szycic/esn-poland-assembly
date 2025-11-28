@@ -203,6 +203,13 @@ export class BallotsStandaloneComponent implements OnChanges, OnDestroy {
     return totNoAbstainAndAbsent > 0 ? this.results[bIndex][oIndex].value / totNoAbstainAndAbsent : 0;
   }
 
+  getResultOfBallotOptionWithoutAbstain(bIndex: number, oIndex: number): number {
+    const oResults = Object.values(this.results[bIndex]);
+    const oResultsNoAbstainAndAbsent = oResults.slice(0, oResults.length - 2);
+    const totNoAbstainAndAbsent = oResultsNoAbstainAndAbsent.reduce((tot, acc): number => (tot += acc.value), 0);
+    return totNoAbstainAndAbsent > 0 ? this.results[bIndex][oIndex].value / totNoAbstainAndAbsent : 0;
+  }
+
   getWinningBallotOptionIndex(bIndex: number): number | -1 {
     const oResults = Object.values(this.results[bIndex]);
     const oResultsNoAbstainAndAbsent = oResults.slice(0, oResults.length - 2);
@@ -222,7 +229,7 @@ export class BallotsStandaloneComponent implements OnChanges, OnDestroy {
     if (moreWinningResultsWithSameValue) return -1;
 
     if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.SIMPLE)
-      return this.getResultOfBallotOptionBasedOnRaw(bIndex, winnerOptionIndex) > 1 / 2 ? winnerOptionIndex : -1;
+      return this.getResultOfBallotOptionWithoutAbstain(bIndex, winnerOptionIndex) > 1 / 2 ? winnerOptionIndex : -1;
     if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.RELATIVE) return winnerOptionIndex;
     if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.ABSOLUTE || this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.QUALIFIED) {
       const allResults = Object.values(this.results[bIndex]) as any[];
