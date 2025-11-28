@@ -223,11 +223,17 @@ export class BallotsStandaloneComponent implements OnChanges, OnDestroy {
 
     if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.SIMPLE)
       return this.getResultOfBallotOptionBasedOnRaw(bIndex, winnerOptionIndex) > 1 / 2 ? winnerOptionIndex : -1;
-    if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.ABSOLUTE)
-      return this.getResultOfBallotOptionBasedOnRaw(bIndex, winnerOptionIndex) > 1 / 2 ? winnerOptionIndex : -1;
     if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.RELATIVE) return winnerOptionIndex;
-    if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.QUALIFIED)
-      return this.getResultOfBallotOptionBasedOnRaw(bIndex, winnerOptionIndex) > 2 / 3 ? winnerOptionIndex : -1;
+    if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.ABSOLUTE || this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.QUALIFIED) {
+      const allResults = Object.values(this.results[bIndex]) as any[];
+      const included = allResults.slice(0, Math.max(0, allResults.length - 1));
+      const includedSum = included.reduce((s, r) => (s += r.value), 0);
+      const winnerValue = allResults[winnerOptionIndex]?.value ?? 0;
+      if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.ABSOLUTE)
+        return includedSum > 0 && winnerValue / includedSum > 1 / 2 ? winnerOptionIndex : -1;
+      if (this.votingSession.ballots[bIndex].majorityType === VotingMajorityTypes.QUALIFIED)
+        return includedSum > 0 && winnerValue / includedSum >= 2 / 3 ? winnerOptionIndex : -1;
+    }
   }
 
   handleBallotReorder({ detail }): void {
